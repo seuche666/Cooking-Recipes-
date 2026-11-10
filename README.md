@@ -14,6 +14,41 @@ Room, Hilt, Navigation Compose. Mindest-SDK 26 (Android 8.0), Target-SDK 35.
 | **Einstellungen** | Hell-/Dunkel-/Systemmodus, Backup-Export und -Import (ZIP) über das Storage Access Framework |
 | **Seed-Daten** | 3 Beispielrezepte beim ersten Start (Carbonara, Pfannkuchen, Linsensuppe) |
 
+## App installieren (ohne eigenen Computer)
+
+Gebaut wird alles über **GitHub Actions** (`.github/workflows/android.yml`), Android Studio ist nicht nötig:
+
+- **Pull Request:** Die Tests laufen, dann wird eine Test-APK gebaut. Sie liegt im Workflow-Lauf unter
+  **Actions → Lauf auswählen → Artifacts** als `Rezeptbuch-1.0.X` (ZIP mit der APK darin).
+  Ohne Signier-Secrets ist diese APK unsigniert und nur zur Kontrolle gedacht.
+- **Merge auf `main`:** Die APK wird signiert und als **Release** veröffentlicht:
+  1. Im Repository rechts auf **Releases** tippen, oder `https://github.com/<besitzer>/<repo>/releases/latest` öffnen.
+  2. Unter **Assets** die Datei `Rezeptbuch-1.0.X.apk` herunterladen.
+  3. Die Datei öffnen. Beim ersten Mal fragt Android, ob der Browser „unbekannte Apps installieren“ darf:
+     erlauben, zurück und **Installieren** tippen.
+  4. Updates werden genauso installiert. Die Rezepte bleiben dabei erhalten.
+
+Die Versionsnummer ist `1.0.<Laufnummer>`. Deshalb lässt sich jede neue APK als Update installieren.
+
+### Signierung über GitHub-Secrets
+
+Jede Release-APK wird mit demselben **geheimen** Schlüssel signiert, damit sich neue Versionen als Update
+installieren lassen. Der Schlüssel liegt **nicht** im Repository, sondern in GitHub-Secrets
+(`Settings → Secrets and variables → Actions → New repository secret`):
+
+| Secret | Inhalt |
+|---|---|
+| `SIGNING_KEYSTORE_BASE64` | Die Keystore-Datei (`.jks`) als Base64-Text |
+| `SIGNING_PASSWORD` | Passwort des Keystores (gleichzeitig Passwort des Schlüssels) |
+| `SIGNING_KEY_ALIAS` | optional. Ohne Angabe wird der erste Alias im Keystore verwendet. |
+
+- Du kannst denselben Keystore wie in einem anderen Projekt verwenden (gleiche Werte eintragen).
+- Bei einem Merge auf `main` **ohne** diese Secrets bricht der Workflow mit einer Fehlermeldung ab.
+  Es wird nie eine unsignierte App veröffentlicht.
+- **Keystore und Passwort sicher aufbewahren** (z. B. im Passwort-Manager). Gehen sie verloren,
+  lässt sich die App nicht mehr aktualisieren, sondern nur deinstallieren und neu installieren.
+  Vorher eine Datensicherung exportieren!
+
 ## Setup in Android Studio
 
 1. **Android Studio** Ladybug (2024.2) oder neuer installieren. Es bringt ein passendes JDK 17+ mit.
@@ -58,8 +93,9 @@ RELEASE_KEY_ALIAS=rezeptbuch
 RELEASE_KEY_PASSWORD=…
 ```
 
-Die vier `RELEASE_*`-Werte können alternativ als **Umgebungsvariablen** gleichen Namens gesetzt werden
-(z. B. in CI). Ist kein Keystore konfiguriert, entsteht ein unsignierter Release-Build.
+Die vier `RELEASE_*`-Werte können alternativ als **Umgebungsvariablen** gleichen Namens gesetzt werden.
+Außerdem versteht der Build `SIGNING_KEYSTORE_PATH`, `SIGNING_PASSWORD` und `SIGNING_KEY_ALIAS`; diese
+Variablen setzt der GitHub-Workflow. Ist kein Keystore konfiguriert, entsteht ein unsignierter Release-Build.
 
 Keystore erzeugen (einmalig):
 

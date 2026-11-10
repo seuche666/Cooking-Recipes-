@@ -10,7 +10,12 @@ plugins {
     alias(libs.plugins.secrets)
 }
 
+// Versionsnummer: In GitHub Actions wird die Laufnummer übergeben (-PversionCode=…),
+// damit jede neue APK als Update über die alte installiert werden kann.
+val appVersionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+
 // Signierdaten kommen aus local.properties ODER aus Umgebungsvariablen – nie aus dem Quellcode.
+// In GitHub Actions setzt der Workflow SIGNING_KEYSTORE_PATH / SIGNING_PASSWORD aus den Repository-Secrets.
 val localProps = Properties().apply {
     val file = rootProject.file("local.properties")
     if (file.exists()) file.inputStream().use { load(it) }
@@ -20,6 +25,12 @@ fun secret(name: String): String? =
     localProps.getProperty(name)?.takeIf { it.isNotBlank() }
         ?: System.getenv(name)?.takeIf { it.isNotBlank() }
 
+val signingStoreFile = secret("RELEASE_STORE_FILE") ?: secret("SIGNING_KEYSTORE_PATH")
+val signingStorePassword = secret("RELEASE_STORE_PASSWORD") ?: secret("SIGNING_PASSWORD")
+val signingKeyPassword = secret("RELEASE_KEY_PASSWORD") ?: secret("SIGNING_PASSWORD")
+val signingKeyAlias = secret("RELEASE_KEY_ALIAS") ?: secret("SIGNING_KEY_ALIAS") ?: "rezeptbuch"
+val canSign = signingStoreFile != null && signingStorePassword != null && signingKeyPassword != null
+
 android {
     namespace = "de.rezeptbuch.app"
     compileSdk = 35
@@ -28,19 +39,18 @@ android {
         applicationId = "de.rezeptbuch.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = appVersionCode
+        versionName = "1.0.$appVersionCode"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
-        val storeFilePath = secret("RELEASE_STORE_FILE")
-        if (storeFilePath != null) {
+        if (canSign) {
             create("release") {
-                storeFile = file(storeFilePath)
-                storePassword = secret("RELEASE_STORE_PASSWORD")
-                keyAlias = secret("RELEASE_KEY_ALIAS")
-                keyPassword = secret("RELEASE_KEY_PASSWORD")
+                storeFile = file(signingStoreFile!!)
+                storePassword = signingStorePassword
+                keyAlias = signingKeyAlias
+                keyPassword = signingKeyPassword
             }
         }
     }
@@ -54,7 +64,7 @@ android {
                 "proguard-rules.pro",
             )
             // Ohne konfigurierten Keystore bleibt der Release-Build unsigniert.
-            signingConfigs.findByName("release")?.let { signingConfig = it }
+            if (canSign) signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -80,6 +90,7 @@ secrets {
     defaultPropertiesFileName = "secrets.defaults.properties"
     ignoreList.add("sdk.dir")
     ignoreList.add("RELEASE_.*")
+    ignoreList.add("SIGNING_.*")
 }
 
 ksp {
