@@ -1,0 +1,14 @@
+# Vorlage für local.properties – kopieren nach "local.properties" und Werte eintragen.
+# local.properties wird von Git ignoriert und darf NIE committet werden.
+
+# Pfad zum Android SDK (setzt Android Studio normalerweise automatisch)
+sdk.dir=/pfad/zum/Android/sdk
+
+# API-Schlüssel (wird über das Secrets Gradle Plugin als BuildConfig.RECIPE_API_KEY bereitgestellt)
+RECIPE_API_KEY=dein-api-key
+
+# Release-Signierung (optional – alternativ als Umgebungsvariablen gleichen Namens)
+RELEASE_STORE_FILE=/absoluter/pfad/zu/release.jks
+RELEASE_STORE_PASSWORD=geheim
+RELEASE_KEY_ALIAS=rezeptbuch
+RELEASE_KEY_PASSWORD=geheim

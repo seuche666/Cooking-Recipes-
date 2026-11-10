@@ -1,0 +1,24 @@
+# --- Build & IDE ---
+.gradle/
+build/
+/captures
+.externalNativeBuild/
+.cxx/
+*.iml
+.idea/
+.DS_Store
+.kotlin/
+
+# --- Geheimnisse & Signierung: NIEMALS committen ---
+local.properties
+*.jks
+*.keystore
+*.p12
+keystore.properties
+google-services.json
+secrets.properties
+
+# --- Release-Artefakte ---
+*.apk
+*.aab
+/app/release/

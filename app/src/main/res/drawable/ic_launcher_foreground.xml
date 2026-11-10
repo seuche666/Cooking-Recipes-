@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kochmütze auf orangem Grund -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,30c-5.2,0 -9.6,3.1 -11.5,7.6c-1,-0.4 -2.1,-0.6 -3.2,-0.6c-5.1,0 -9.3,4.2 -9.3,9.3c0,4.3 2.9,7.9 6.9,9V70h34.2V55.3c4,-1.1 6.9,-4.7 6.9,-9c0,-5.1 -4.2,-9.3 -9.3,-9.3c-1.1,0 -2.2,0.2 -3.2,0.6C63.6,33.1 59.2,30 54,30z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M36.9,73h34.2v5H36.9z" />
+</vector>
