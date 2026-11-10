@@ -50,15 +50,24 @@ installieren lassen. Der Schlüssel liegt **nicht** im Repository, sondern in Gi
    Secret `SIGNING_PASSWORD` anlegen.
 2. **Actions → Signierschlüssel erzeugen → Run workflow** starten.
 3. Im fertigen Lauf das Artifact `signierschluessel` herunterladen und entpacken. Den gesamten Inhalt
-   von `SIGNING_KEYSTORE_BASE64.txt` als Secret `SIGNING_KEYSTORE_BASE64` anlegen.
+   von `SIGNING_KEYSTORE_BASE64.txt` (in einer Editor-App „Alles auswählen“) als Secret
+   `SIGNING_KEYSTORE_BASE64` anlegen bzw. überschreiben. Zeilenumbrüche sind in Ordnung.
+   `ANLEITUNG.txt` nennt Länge und Prüfsumme. Der Build-Lauf zeigt dieselben Werte für den
+   eingefügten Text, so siehst du sofort, ob beim Kopieren etwas verloren ging.
 4. `rezeptbuch-release.jks` zusammen mit dem Passwort sicher aufbewahren und das Artifact im
    Workflow-Lauf löschen. Es wird ohnehin nach einem Tag automatisch entfernt.
 5. Den fehlgeschlagenen Lauf von **Android-App bauen** auf `main` mit **Re-run all jobs** neu starten.
    Danach erscheint das Release.
 
+Erzeugt wird ein EC-Schlüssel (P-256). Er ist genauso sicher wie RSA, aber als Text nur rund
+1400 Zeichen lang und damit auf dem Handy leichter zu kopieren.
+
+Passt etwas nicht, sagt der Build genau, was: Text zu kurz, Text abgeschnitten, Text beschädigt
+oder falsches Passwort. Ein unbrauchbarer Schlüssel darf neu erzeugt werden, ein funktionierender nie.
+
 Der Keystore ist mit dem Passwort verschlüsselt. Ohne das Passwort ist die Datei nutzlos, auch wenn
-jemand das Artifact herunterlädt. Ist `SIGNING_KEYSTORE_BASE64` schon gesetzt, bricht der Workflow ab,
-damit kein vorhandener Schlüssel versehentlich ersetzt wird.
+jemand das Artifact herunterlädt. Enthält `SIGNING_KEYSTORE_BASE64` schon einen funktionierenden
+Schlüssel, bricht der Workflow ab, damit er nicht versehentlich ersetzt wird.
 - Bei einem Merge auf `main` **ohne** diese Secrets bricht der Workflow mit einer Fehlermeldung ab.
   Es wird nie eine unsignierte App veröffentlicht.
 - **Keystore und Passwort sicher aufbewahren** (z. B. im Passwort-Manager). Gehen sie verloren,

@@ -44,14 +44,15 @@ jobs:
           IS_RELEASE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
         run: |
           if [ -n "$KEYSTORE_BASE64" ] && [ -n "$SIGNING_PASSWORD" ]; then
-            printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/release.jks"
-            if [ -z "$KEY_ALIAS" ]; then
-              KEY_ALIAS=$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_PASSWORD" 2>/dev/null \
-                | sed -n 's/^Alias name: //p' | head -n 1)
-            fi
-            if [ -z "$KEY_ALIAS" ] || ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
-              echo "::error::Der Signierschlüssel lässt sich nicht öffnen. Bitte SIGNING_KEYSTORE_BASE64, SIGNING_PASSWORD (und ggf. SIGNING_KEY_ALIAS) prüfen."
-              exit 1
+            LEVEL=error; [ "$IS_RELEASE" = "true" ] || LEVEL=warning
+            if ! KEY_ALIAS=$(LEVEL=$LEVEL .github/scripts/check-keystore.sh "$RUNNER_TEMP/release.jks"); then
+              if [ "$IS_RELEASE" = "true" ]; then
+                exit 1
+              fi
+              # Pull Requests: trotzdem eine unsignierte Test-APK bauen
+              echo "SIGNED=false" >> "$GITHUB_ENV"
+              echo "::warning::Signierschlüssel unbrauchbar (siehe Hinweis oben) – es wird nur eine unsignierte Test-APK gebaut."
+              exit 0
             fi
             {
               echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks"

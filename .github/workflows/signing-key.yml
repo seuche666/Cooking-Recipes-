@@ -16,15 +16,14 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v5
+
       - name: Keystore erzeugen
         env:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          EXISTING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
         run: |
-          if [ -n "$EXISTING_KEYSTORE" ]; then
-            echo "::error::Das Secret SIGNING_KEYSTORE_BASE64 ist bereits gesetzt. Ein neuer Schlüssel würde Updates bereits installierter Versionen verhindern. Abbruch."
-            exit 1
-          fi
           if [ -z "$SIGNING_PASSWORD" ]; then
             echo "::error::Bitte zuerst das Secret SIGNING_PASSWORD anlegen (Settings → Secrets and variables → Actions)."
             exit 1
@@ -33,21 +32,48 @@ jobs:
             echo "::error::SIGNING_PASSWORD ist zu kurz. Bitte mindestens 16 zufällige Zeichen verwenden."
             exit 1
           fi
+          # Ein bereits funktionierender Schlüssel wird nie ersetzt (sonst gingen Updates verloren).
+          # Ein kaputter oder unvollständig eingefügter darf neu erzeugt werden.
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            if .github/scripts/check-keystore.sh "$RUNNER_TEMP/existing.jks" > /dev/null 2>&1; then
+              echo "::error::SIGNING_KEYSTORE_BASE64 enthält bereits einen funktionierenden Schlüssel. Ein neuer würde Updates bereits installierter Versionen verhindern. Abbruch."
+              exit 1
+            fi
+            echo "::warning::Das vorhandene Secret SIGNING_KEYSTORE_BASE64 ist unbrauchbar. Es wird ein neuer Schlüssel erzeugt; danach das Secret mit dem neuen Text überschreiben."
+          fi
+
           mkdir -p out
+          # EC-Schlüssel (P-256): sicher und deutlich kürzer als RSA, also leichter zu kopieren.
           keytool -genkeypair -keystore out/rezeptbuch-release.jks -storetype PKCS12 \
-            -alias rezeptbuch -keyalg RSA -keysize 4096 -validity 10000 \
-            -dname "CN=Rezeptbuch" \
+            -alias rezeptbuch -keyalg EC -groupname secp256r1 -sigalg SHA256withECDSA \
+            -validity 10000 -dname "CN=Rezeptbuch" \
             -storepass:env SIGNING_PASSWORD -keypass:env SIGNING_PASSWORD
-          base64 -w0 out/rezeptbuch-release.jks > out/SIGNING_KEYSTORE_BASE64.txt
-          cat > out/ANLEITUNG.txt <<'TXT'
-          1. Den gesamten Inhalt von SIGNING_KEYSTORE_BASE64.txt kopieren.
-          2. Im Repository: Settings → Secrets and variables → Actions → New repository secret
-             Name: SIGNING_KEYSTORE_BASE64, Wert: den kopierten Text einfügen.
-          3. rezeptbuch-release.jks zusammen mit dem Passwort sicher aufbewahren
+          base64 -w 76 out/rezeptbuch-release.jks > out/SIGNING_KEYSTORE_BASE64.txt
+          length=$(tr -cd 'A-Za-z0-9+/=' < out/SIGNING_KEYSTORE_BASE64.txt | wc -c)
+          checksum=$(sha256sum out/rezeptbuch-release.jks | cut -c1-12)
+
+          # Gegenprobe: Lässt sich der erzeugte Text wieder als Schlüssel öffnen?
+          KEYSTORE_BASE64=$(cat out/SIGNING_KEYSTORE_BASE64.txt) KEY_ALIAS= \
+            .github/scripts/check-keystore.sh "$RUNNER_TEMP/check.jks" > /dev/null
+
+          cat > out/ANLEITUNG.txt <<TXT
+          1. Den GESAMTEN Inhalt von SIGNING_KEYSTORE_BASE64.txt kopieren
+             (in einer Editor-App "Alles auswählen" verwenden).
+             Er ist $length Zeichen lang (ohne Zeilenumbrüche) und hat die Prüfsumme $checksum.
+          2. Im Repository: Settings → Secrets and variables → Actions.
+             Bei SIGNING_KEYSTORE_BASE64 auf den Stift tippen (oder "New repository secret"),
+             den alten Inhalt komplett löschen, den kopierten Text einfügen, speichern.
+             Zeilenumbrüche im Text sind in Ordnung.
+          3. SIGNING_PASSWORD danach NICHT mehr ändern.
+          4. rezeptbuch-release.jks zusammen mit dem Passwort sicher aufbewahren
              (z. B. Passwort-Manager). Ohne beides lassen sich keine Updates mehr signieren.
-          4. Danach dieses Artifact im Workflow-Lauf löschen (Papierkorb-Symbol).
+          5. Dieses Artifact im Workflow-Lauf löschen (Papierkorb-Symbol).
+          6. Den Lauf "Android-App bauen" auf main mit "Re-run all jobs" neu starten.
+             Im Log steht dann "Schlüssel aus dem Secret: ... Zeichen, Prüfsumme ...".
+             Beide Werte müssen mit Punkt 1 übereinstimmen.
           TXT
-          echo "Keystore erzeugt (Alias: rezeptbuch)."
+          echo "Keystore erzeugt (Alias: rezeptbuch, $length Zeichen, Prüfsumme $checksum)."
+          echo "### Neuer Signierschlüssel: $length Zeichen, Prüfsumme \`$checksum\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Keystore als Artifact bereitstellen
         uses: actions/upload-artifact@v5
