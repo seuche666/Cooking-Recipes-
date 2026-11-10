@@ -1,0 +1,57 @@
+name: Signierschlüssel erzeugen
+
+# Einmalig von Hand starten (Actions → "Signierschlüssel erzeugen" → "Run workflow"),
+# wenn du keinen Computer hast, um selbst einen Keystore zu erstellen. Ablauf siehe README.
+#
+# Voraussetzung: Das Secret SIGNING_PASSWORD ist bereits angelegt (langes, zufälliges Passwort).
+# Der Keystore wird mit diesem Passwort verschlüsselt und als Artifact bereitgestellt.
+# Das Passwort selbst erscheint nirgends im Log.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Keystore erzeugen
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          EXISTING_KEYSTORE: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$EXISTING_KEYSTORE" ]; then
+            echo "::error::Das Secret SIGNING_KEYSTORE_BASE64 ist bereits gesetzt. Ein neuer Schlüssel würde Updates bereits installierter Versionen verhindern. Abbruch."
+            exit 1
+          fi
+          if [ -z "$SIGNING_PASSWORD" ]; then
+            echo "::error::Bitte zuerst das Secret SIGNING_PASSWORD anlegen (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+          if [ "${#SIGNING_PASSWORD}" -lt 16 ]; then
+            echo "::error::SIGNING_PASSWORD ist zu kurz. Bitte mindestens 16 zufällige Zeichen verwenden."
+            exit 1
+          fi
+          mkdir -p out
+          keytool -genkeypair -keystore out/rezeptbuch-release.jks -storetype PKCS12 \
+            -alias rezeptbuch -keyalg RSA -keysize 4096 -validity 10000 \
+            -dname "CN=Rezeptbuch" \
+            -storepass:env SIGNING_PASSWORD -keypass:env SIGNING_PASSWORD
+          base64 -w0 out/rezeptbuch-release.jks > out/SIGNING_KEYSTORE_BASE64.txt
+          cat > out/ANLEITUNG.txt <<'TXT'
+          1. Den gesamten Inhalt von SIGNING_KEYSTORE_BASE64.txt kopieren.
+          2. Im Repository: Settings → Secrets and variables → Actions → New repository secret
+             Name: SIGNING_KEYSTORE_BASE64, Wert: den kopierten Text einfügen.
+          3. rezeptbuch-release.jks zusammen mit dem Passwort sicher aufbewahren
+             (z. B. Passwort-Manager). Ohne beides lassen sich keine Updates mehr signieren.
+          4. Danach dieses Artifact im Workflow-Lauf löschen (Papierkorb-Symbol).
+          TXT
+          echo "Keystore erzeugt (Alias: rezeptbuch)."
+
+      - name: Keystore als Artifact bereitstellen
+        uses: actions/upload-artifact@v5
+        with:
+          name: signierschluessel
+          path: out/
+          retention-days: 1

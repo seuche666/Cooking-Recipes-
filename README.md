@@ -43,6 +43,22 @@ installieren lassen. Der Schlüssel liegt **nicht** im Repository, sondern in Gi
 | `SIGNING_KEY_ALIAS` | optional. Ohne Angabe wird der erste Alias im Keystore verwendet. |
 
 - Du kannst denselben Keystore wie in einem anderen Projekt verwenden (gleiche Werte eintragen).
+
+**Neuen Schlüssel ohne Computer erzeugen** (Workflow `.github/workflows/signing-key.yml`):
+
+1. Ein langes, zufälliges Passwort erzeugen (mindestens 16 Zeichen, z. B. im Passwort-Manager) und als
+   Secret `SIGNING_PASSWORD` anlegen.
+2. **Actions → Signierschlüssel erzeugen → Run workflow** starten.
+3. Im fertigen Lauf das Artifact `signierschluessel` herunterladen und entpacken. Den gesamten Inhalt
+   von `SIGNING_KEYSTORE_BASE64.txt` als Secret `SIGNING_KEYSTORE_BASE64` anlegen.
+4. `rezeptbuch-release.jks` zusammen mit dem Passwort sicher aufbewahren und das Artifact im
+   Workflow-Lauf löschen. Es wird ohnehin nach einem Tag automatisch entfernt.
+5. Den fehlgeschlagenen Lauf von **Android-App bauen** auf `main` mit **Re-run all jobs** neu starten.
+   Danach erscheint das Release.
+
+Der Keystore ist mit dem Passwort verschlüsselt. Ohne das Passwort ist die Datei nutzlos, auch wenn
+jemand das Artifact herunterlädt. Ist `SIGNING_KEYSTORE_BASE64` schon gesetzt, bricht der Workflow ab,
+damit kein vorhandener Schlüssel versehentlich ersetzt wird.
 - Bei einem Merge auf `main` **ohne** diese Secrets bricht der Workflow mit einer Fehlermeldung ab.
   Es wird nie eine unsignierte App veröffentlicht.
 - **Keystore und Passwort sicher aufbewahren** (z. B. im Passwort-Manager). Gehen sie verloren,
