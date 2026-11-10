@@ -30,42 +30,40 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      # Signierschlüssel aus den Repository-Secrets (siehe README):
-      #   SIGNING_KEYSTORE_BASE64  – Keystore-Datei als Base64-Text
-      #   SIGNING_PASSWORD         – Passwort des Keystores und des Schlüssels
-      #   SIGNING_KEY_ALIAS        – optional; ohne Angabe wird der erste Alias im Keystore verwendet
-      # Ohne Secrets: Bei Pull Requests wird nur unsigniert gebaut,
+      # Signierung: Es wird nur EIN Secret gebraucht, SIGNING_PASSWORD (mindestens 16 zufällige Zeichen).
+      # Daraus wird bei jedem Lauf derselbe Schlüssel abgeleitet (.github/scripts/derive-keystore.py),
+      # es muss also kein Keystore als Text kopiert werden. Siehe README.
+      # Ohne Secret: Bei Pull Requests wird nur unsigniert gebaut,
       # auf main bricht der Build ab (es wird nie eine unsignierte App veröffentlicht).
       - name: Signierschlüssel einrichten
         env:
-          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           IS_RELEASE: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$SIGNING_PASSWORD" ]; then
-            printf '%s' "$KEYSTORE_BASE64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/release.jks"
-            if [ -z "$KEY_ALIAS" ]; then
-              KEY_ALIAS=$(keytool -list -v -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_PASSWORD" 2>/dev/null \
-                | sed -n 's/^Alias name: //p' | head -n 1)
-            fi
-            if [ -z "$KEY_ALIAS" ] || ! keytool -list -keystore "$RUNNER_TEMP/release.jks" -storepass "$SIGNING_PASSWORD" -alias "$KEY_ALIAS" > /dev/null 2>&1; then
-              echo "::error::Der Signierschlüssel lässt sich nicht öffnen. Bitte SIGNING_KEYSTORE_BASE64, SIGNING_PASSWORD (und ggf. SIGNING_KEY_ALIAS) prüfen."
-              exit 1
+          if [ -n "$SIGNING_PASSWORD" ]; then
+            python3 -m venv "$RUNNER_TEMP/signing-venv"
+            # Version fest: Sie bestimmt die exakten Zertifikats-Bytes und damit die Update-Fähigkeit.
+            "$RUNNER_TEMP/signing-venv/bin/pip" install --quiet "cryptography==50.0.2"
+            if ! FINGERPRINT=$("$RUNNER_TEMP/signing-venv/bin/python" .github/scripts/derive-keystore.py "$RUNNER_TEMP/release.p12"); then
+              if [ "$IS_RELEASE" = "true" ]; then exit 1; fi
+              echo "SIGNED=false" >> "$GITHUB_ENV"
+              echo "::warning::Signierschlüssel konnte nicht erzeugt werden – es wird nur eine unsignierte Test-APK gebaut."
+              exit 0
             fi
             {
-              echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks"
+              echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.p12"
               echo "SIGNING_PASSWORD=$SIGNING_PASSWORD"
-              echo "SIGNING_KEY_ALIAS=$KEY_ALIAS"
+              echo "SIGNING_KEY_ALIAS=rezeptbuch"
+              echo "SIGNED=true"
             } >> "$GITHUB_ENV"
-            echo "SIGNED=true" >> "$GITHUB_ENV"
-            echo "Signierschlüssel aus den Secrets wird verwendet (Alias: $KEY_ALIAS)."
+            echo "Signiert wird mit dem Zertifikat SHA-256 $FINGERPRINT"
+            echo "**Signatur-Zertifikat (SHA-256):** \`$FINGERPRINT\`" >> "$GITHUB_STEP_SUMMARY"
           elif [ "$IS_RELEASE" = "true" ]; then
-            echo "::error::Die Secrets SIGNING_KEYSTORE_BASE64 und SIGNING_PASSWORD fehlen. Ohne sie wird kein Release erstellt (siehe README)."
+            echo "::error::Das Secret SIGNING_PASSWORD fehlt. Ohne es wird kein Release erstellt (siehe README)."
             exit 1
           else
             echo "SIGNED=false" >> "$GITHUB_ENV"
-            echo "::warning::Keine Signier-Secrets verfügbar – es wird nur eine unsignierte Test-APK gebaut."
+            echo "::warning::Kein Secret SIGNING_PASSWORD verfügbar – es wird nur eine unsignierte Test-APK gebaut."
           fi
 
       - name: Tests ausführen

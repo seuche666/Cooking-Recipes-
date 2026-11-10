@@ -32,38 +32,31 @@ Die Versionsnummer ist `1.0.<Laufnummer>`. Deshalb lässt sich jede neue APK als
 
 ### Signierung über GitHub-Secrets
 
-Jede Release-APK wird mit demselben **geheimen** Schlüssel signiert, damit sich neue Versionen als Update
-installieren lassen. Der Schlüssel liegt **nicht** im Repository, sondern in GitHub-Secrets
-(`Settings → Secrets and variables → Actions → New repository secret`):
+Jede Release-APK muss mit demselben Schlüssel signiert sein, damit sich neue Versionen als Update
+installieren lassen. Dafür braucht es **nur ein einziges Secret**, nichts muss kopiert werden:
 
 | Secret | Inhalt |
 |---|---|
-| `SIGNING_KEYSTORE_BASE64` | Die Keystore-Datei (`.jks`) als Base64-Text |
-| `SIGNING_PASSWORD` | Passwort des Keystores (gleichzeitig Passwort des Schlüssels) |
-| `SIGNING_KEY_ALIAS` | optional. Ohne Angabe wird der erste Alias im Keystore verwendet. |
+| `SIGNING_PASSWORD` | Ein langes, zufälliges Passwort (mindestens 16 Zeichen, z. B. aus dem Passwort-Manager) |
 
-- Du kannst denselben Keystore wie in einem anderen Projekt verwenden (gleiche Werte eintragen).
+Anlegen unter `Settings → Secrets and variables → Actions → New repository secret`.
 
-**Neuen Schlüssel ohne Computer erzeugen** (Workflow `.github/workflows/signing-key.yml`):
+So funktioniert es: `.github/scripts/derive-keystore.py` leitet bei jedem Build aus dem Passwort
+denselben privaten Schlüssel ab (scrypt → EC P-256). Dazu erzeugt es ein Zertifikat, das Byte für
+Byte gleich bleibt (feste Felder, deterministische ECDSA-Signatur nach RFC 6979). Der Schlüssel wird
+nirgends gespeichert. Der SHA-256-Fingerabdruck des Zertifikats steht in der Zusammenfassung jedes
+Release-Laufs.
 
-1. Ein langes, zufälliges Passwort erzeugen (mindestens 16 Zeichen, z. B. im Passwort-Manager) und als
-   Secret `SIGNING_PASSWORD` anlegen.
-2. **Actions → Signierschlüssel erzeugen → Run workflow** starten.
-3. Im fertigen Lauf das Artifact `signierschluessel` herunterladen und entpacken. Den gesamten Inhalt
-   von `SIGNING_KEYSTORE_BASE64.txt` als Secret `SIGNING_KEYSTORE_BASE64` anlegen.
-4. `rezeptbuch-release.jks` zusammen mit dem Passwort sicher aufbewahren und das Artifact im
-   Workflow-Lauf löschen. Es wird ohnehin nach einem Tag automatisch entfernt.
-5. Den fehlgeschlagenen Lauf von **Android-App bauen** auf `main` mit **Re-run all jobs** neu starten.
-   Danach erscheint das Release.
-
-Der Keystore ist mit dem Passwort verschlüsselt. Ohne das Passwort ist die Datei nutzlos, auch wenn
-jemand das Artifact herunterlädt. Ist `SIGNING_KEYSTORE_BASE64` schon gesetzt, bricht der Workflow ab,
-damit kein vorhandener Schlüssel versehentlich ersetzt wird.
-- Bei einem Merge auf `main` **ohne** diese Secrets bricht der Workflow mit einer Fehlermeldung ab.
-  Es wird nie eine unsignierte App veröffentlicht.
-- **Keystore und Passwort sicher aufbewahren** (z. B. im Passwort-Manager). Gehen sie verloren,
-  lässt sich die App nicht mehr aktualisieren, sondern nur deinstallieren und neu installieren.
-  Vorher eine Datensicherung exportieren!
+- **Das Passwort ist der Schlüssel.** Bewahre es sicher auf (Passwort-Manager) und ändere das Secret
+  **nie**. Ein anderes Passwort ergibt einen anderen Schlüssel, dann lassen sich installierte Versionen
+  nicht mehr aktualisieren, nur deinstallieren und neu installieren.
+- Weil der Code öffentlich ist, schützt allein das Passwort den Schlüssel. Deshalb muss es lang und
+  zufällig sein. Die langsame Ableitung (scrypt) erschwert das Durchprobieren zusätzlich.
+- Die Konstanten in `derive-keystore.py` und die festgelegte `cryptography`-Version im Workflow dürfen
+  nicht geändert werden, sonst ändert sich der Schlüssel.
+- Bei einem Merge auf `main` **ohne** das Secret bricht der Workflow ab. Es wird nie eine unsignierte
+  App veröffentlicht. Pull Requests bauen ohne Secret eine unsignierte Test-APK.
+- Frühere Secrets wie `SIGNING_KEYSTORE_BASE64` werden nicht mehr verwendet und können gelöscht werden.
 
 ## Setup in Android Studio
 
@@ -110,7 +103,7 @@ RELEASE_KEY_PASSWORD=…
 ```
 
 Die vier `RELEASE_*`-Werte können alternativ als **Umgebungsvariablen** gleichen Namens gesetzt werden.
-Außerdem versteht der Build `SIGNING_KEYSTORE_PATH`, `SIGNING_PASSWORD` und `SIGNING_KEY_ALIAS`; diese
+Außerdem versteht der Build `SIGNING_KEYSTORE_PATH`, `SIGNING_PASSWORD` und `SIGNING_KEY_ALIAS`. Diese
 Variablen setzt der GitHub-Workflow. Ist kein Keystore konfiguriert, entsteht ein unsignierter Release-Build.
 
 Keystore erzeugen (einmalig):
