@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Rezeptbuch</string>
+
+    <!-- Allgemein -->
+    <string name="back">Zurück</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="save">Speichern</string>
+    <string name="delete">Löschen</string>
+    <string name="ok">OK</string>
+    <string name="discard">Verwerfen</string>
+    <string name="keep_editing">Weiter bearbeiten</string>
+
+    <!-- Liste -->
+    <string name="search_hint">Rezepte suchen</string>
+    <string name="search_clear">Suche löschen</string>
+    <string name="recipe_add">Neues Rezept</string>
+    <string name="list_empty">Noch keine Rezepte vorhanden.\nTippe auf „Neues Rezept“, um loszulegen.</string>
+    <string name="list_empty_search">Keine Rezepte gefunden.</string>
+
+    <!-- Portionen -->
+    <plurals name="servings">
+        <item quantity="one">%d Portion</item>
+        <item quantity="other">%d Portionen</item>
+    </plurals>
+    <plurals name="servings_original">
+        <item quantity="one">Originalrezept: %d Portion</item>
+        <item quantity="other">Originalrezept: %d Portionen</item>
+    </plurals>
+    <string name="servings_decrease">Weniger Portionen</string>
+    <string name="servings_increase">Mehr Portionen</string>
+
+    <!-- Detail -->
+    <string name="recipe_edit">Rezept bearbeiten</string>
+    <string name="recipe_new">Neues Rezept</string>
+    <string name="recipe_delete">Rezept löschen</string>
+    <string name="recipe_delete_title">Rezept löschen?</string>
+    <string name="recipe_delete_message">„%1$s“ wird mit allen Notizen und dem Foto endgültig gelöscht.</string>
+    <string name="recipe_not_found">Rezept nicht gefunden.</string>
+    <string name="cook_time_value">Kochzeit: %1$s</string>
+    <string name="section_ingredients">Zutaten</string>
+    <string name="section_steps">Zubereitung</string>
+    <string name="section_notes">Notizen</string>
+    <string name="ingredients_empty">Keine Zutaten angegeben.</string>
+    <string name="step_timer_label">Timer: %1$s</string>
+    <string name="cooking_mode_start">Kochmodus</string>
+
+    <!-- Notizen -->
+    <string name="note_hint">Neue Notiz, z. B. „Nächstes Mal weniger Salz“</string>
+    <string name="note_add">Notiz hinzufügen</string>
+    <string name="note_edit">Notiz bearbeiten</string>
+    <string name="note_delete">Notiz löschen</string>
+    <string name="note_edited">bearbeitet</string>
+    <string name="notes_empty">Noch keine Notizen.</string>
+
+    <!-- Bearbeiten -->
+    <string name="field_title">Titel</string>
+    <string name="field_servings">Grundportionen</string>
+    <string name="field_cook_time">Kochzeit (Min.)</string>
+    <string name="field_amount">Menge</string>
+    <string name="field_unit">Einheit</string>
+    <string name="field_ingredient">Zutat</string>
+    <string name="field_step_text">Beschreibung</string>
+    <string name="field_step_timer">Timer (Minuten, optional)</string>
+    <string name="field_step_timer_hint">z. B. 5, 1,5 oder 1:30</string>
+    <string name="error_title_required">Bitte einen Titel eingeben.</string>
+    <string name="unit_none">(ohne Einheit)</string>
+    <string name="ingredient_add">Zutat hinzufügen</string>
+    <string name="ingredient_remove">Zutat entfernen</string>
+    <string name="step_add">Schritt hinzufügen</string>
+    <string name="step_remove">Schritt entfernen</string>
+    <string name="step_move_up">Nach oben</string>
+    <string name="step_move_down">Nach unten</string>
+    <string name="step_number">Schritt %1$d</string>
+    <string name="photo">Rezeptfoto</string>
+    <string name="photo_gallery">Galerie</string>
+    <string name="photo_camera">Kamera</string>
+    <string name="photo_remove">Foto entfernen</string>
+    <string name="photo_error">Das Foto konnte nicht geladen werden.</string>
+    <string name="discard_title">Änderungen verwerfen?</string>
+    <string name="discard_message">Deine ungespeicherten Änderungen gehen verloren.</string>
+
+    <!-- Kochmodus -->
+    <string name="cooking_mode_exit">Kochmodus beenden</string>
+    <string name="step_progress">%1$d / %2$d</string>
+    <string name="previous">Zurück</string>
+    <string name="next">Weiter</string>
+    <string name="finish">Fertig</string>
+    <string name="ingredients_for">Zutaten für</string>
+    <string name="timer_start">Timer starten</string>
+    <string name="timer_cancel">Timer abbrechen</string>
+    <string name="timer_stop">Stopp</string>
+    <string name="timer_done">Zeit ist um!</string>
+    <string name="timer_done_short">fertig</string>
+
+    <!-- Timer-Benachrichtigungen -->
+    <string name="channel_timer_running">Laufende Timer</string>
+    <string name="channel_timer_alarm">Timer-Alarm</string>
+    <string name="timer_notification_idle">Timer aktiv</string>
+    <string name="timer_notification_running">Timer läuft</string>
+    <string name="timer_notification_more">+ %1$d weitere Timer</string>
+    <string name="timer_finished_title">Timer abgelaufen</string>
+
+    <!-- Einstellungen -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_appearance">Darstellung</string>
+    <string name="theme_system">Systemeinstellung</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+    <string name="settings_backup">Datensicherung</string>
+    <string name="backup_export">Backup exportieren</string>
+    <string name="backup_export_desc">Alle Rezepte, Notizen und Fotos als ZIP-Datei speichern, z. B. in Downloads oder Google Drive.</string>
+    <string name="backup_import">Backup importieren</string>
+    <string name="backup_import_desc">Rezepte aus einer ZIP-Sicherung wiederherstellen.</string>
+    <string name="backup_exporting">Backup wird erstellt …</string>
+    <string name="backup_importing">Backup wird importiert …</string>
+    <string name="backup_export_success">Backup gespeichert</string>
+    <string name="backup_import_success">Import abgeschlossen</string>
+    <string name="backup_export_failed">Export fehlgeschlagen</string>
+    <string name="backup_import_failed">Import fehlgeschlagen</string>
+    <string name="backup_unknown_error">Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.</string>
+    <plurals name="backup_export_result">
+        <item quantity="one">%d Rezept gesichert,</item>
+        <item quantity="other">%d Rezepte gesichert,</item>
+    </plurals>
+    <plurals name="backup_photos">
+        <item quantity="one">%d Foto.</item>
+        <item quantity="other">%d Fotos.</item>
+    </plurals>
+    <string name="backup_import_result">Neu: %1$d\nAktualisiert: %2$d\nÜbersprungen (lokal aktueller): %3$d</string>
+    <string name="import_mode_title">Wie importieren?</string>
+    <string name="import_mode_message">„Zusammenführen“ behält deine Rezepte und ergänzt die aus dem Backup; gleiche Rezepte werden durch die neuere Fassung ersetzt.\n\n„Ersetzen“ löscht alle vorhandenen Rezepte, Notizen und Fotos und stellt nur das Backup wieder her.</string>
+    <string name="import_merge">Zusammenführen</string>
+    <string name="import_replace">Ersetzen</string>
+    <string name="settings_about">Über</string>
+    <string name="about_version">Version %1$s · Backup-Format v%2$d</string>
+</resources>
