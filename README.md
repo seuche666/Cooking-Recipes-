@@ -7,12 +7,23 @@ Room, Hilt, Navigation Compose. Mindest-SDK 26 (Android 8.0), Target-SDK 35.
 
 | Bereich | Umfang |
 |---|---|
-| **Rezepte** | Anlegen, Bearbeiten, Löschen; Titel, Foto (Galerie oder Kamera), Grundportionen, Zutaten (Menge · Einheit · Name), Schritte mit optionalem Timer, Kochzeit; Liste mit Titelsuche |
-| **Notizen** | Beliebig viele datierte Notizen pro Rezept, direkt auf der Detailseite anlegen, bearbeiten, löschen |
+| **Start** | Überblick und Schnellzugriffe: Suche, Kategorien als farbige Kreise, „Zuletzt gekocht“ und „Neu hinzugefügt“ |
+| **Rezepte** | Alle Rezepte mit Suche nach Name **und Zutaten** („Kartoffeln“), Umschalter „Alle Rezepte“ / „Kategorien“ (tippen oder wischen), Wischen zum Löschen mit „Rückgängig“ |
+| **Kategorien** | Beliebig viele pro Rezept, selbst anlegen, umbenennen und löschen, jeweils mit Symbol und Farbe; Anzahl der Rezepte je Kategorie |
+| **Rezeptverwaltung** | Anlegen, Bearbeiten, Löschen; Titel, Foto (Galerie oder Kamera), Kategorien, Grundportionen, Zutaten (Menge · Einheit · Name), Schritte mit optionalem Timer, Kochzeit |
+| **Notizen** | Beliebig viele datierte Notizen pro Rezept, direkt auf der Detailseite bearbeitbar |
 | **Portionsrechner** | Plus/Minus auf der Detailseite, Mengen werden live umgerechnet und sinnvoll gerundet; gespeicherte Daten bleiben unverändert |
-| **Kochmodus** | Vollbild, ein Schritt pro Seite, große Schrift, Wischen oder Buttons, Fortschrittsbalken, Bildschirm bleibt an, Timer laufen im Hintergrund weiter und melden sich per Benachrichtigung mit Alarmton, ausklappbares Zutaten-Panel mit gewählter Portionszahl |
-| **Einstellungen** | Hell-/Dunkel-/Systemmodus, Backup-Export und -Import (ZIP) über das Storage Access Framework |
-| **Seed-Daten** | 3 Beispielrezepte beim ersten Start (Carbonara, Pfannkuchen, Linsensuppe) |
+| **Kochmodus** | Vollbild, ein Schritt pro Seite, große Schrift, Bildschirm bleibt an, Timer im Hintergrund mit Alarm, Zutaten-Panel |
+| **Optionen** | Design „Hell“, „Dunkel“ oder „Wie System“ (Standard, wirkt sofort), Backup-Export und -Import (ZIP) |
+
+### Design „Klar & Hell“
+
+Heller, leicht bläulich-grauer Hintergrund, Schrift **Plus Jakarta Sans** (eingebettet, SIL Open Font
+License, siehe `licenses/`), weiße Karten mit runden Ecken und weichem Schatten, Kategorien als farbige
+Symbol-Kreise, untere Navigationsleiste mit blauem Akzent. Animationen: weicher Übergang beim Öffnen
+von Unterseiten, Wischen zwischen den Reitern, leichtes Nachgeben beim Antippen, Wischen zum Löschen.
+Im dunklen Design: gleicher Aufbau, dunkler Hintergrund, dunkelgraue Karten, helle Schrift und eigens
+abgestimmte Kategorie-Farben.
 
 ## App installieren (ohne eigenen Computer)
 
@@ -72,7 +83,7 @@ Kommandozeile:
 
 ```bash
 ./gradlew assembleDebug          # Debug-APK
-./gradlew testDebugUnitTest      # Unit-Tests (Portionsumrechnung)
+./gradlew testDebugUnitTest      # Unit-Tests (Portionsumrechnung, DB-Migration, Backup-Format)
 ./gradlew assembleRelease        # Release-Build mit R8 (Signierung siehe unten)
 ```
 
@@ -127,12 +138,12 @@ de.rezeptbuch.app
 ├── RezeptbuchApp.kt, MainActivity.kt
 ├── di/                     Hilt-Module (Room, DataStore, Repository-Bindings, App-Scope)
 ├── domain/                 reines Kotlin, keine Android-UI-Abhängigkeiten
-│   ├── model/              Recipe, Ingredient, IngredientUnit, CookingStep, RecipeNote, ThemeMode …
-│   ├── repository/         Interfaces: RecipeRepository, SettingsRepository, BackupRepository
+│   ├── model/              Recipe, Category, Ingredient, IngredientUnit, CookingStep, RecipeNote, ThemeMode …
+│   ├── repository/         Interfaces: RecipeRepository, CategoryRepository, SettingsRepository, BackupRepository
 │   └── portion/            PortionCalculator (Umrechnung + Rundung), TimerInput, Zeitformatierung
 ├── data/
-│   ├── local/              Room: AppDatabase, Entities, RecipeDao, Converter, Mapper
-│   ├── repository/         RecipeRepositoryImpl
+│   ├── local/              Room: AppDatabase, Entities, RecipeDao, CategoryDao, Migrations, Mapper
+│   ├── repository/         RecipeRepositoryImpl, CategoryRepositoryImpl
 │   ├── photo/              PhotoStorage (Fotos in filesDir/photos, Kamera-URIs via FileProvider)
 │   ├── backup/             ZIP-Export/-Import, Backup-Modelle, Format-Migrationen
 │   ├── settings/           DataStore (Theme, Seed-Flag)
@@ -141,9 +152,9 @@ de.rezeptbuch.app
 ├── service/timer/          CookingTimerManager, Foreground-Service, Benachrichtigungen
 └── ui/
     ├── navigation/         typsichere Routen + NavHost
-    ├── list/ detail/ edit/ cooking/ settings/   Screens + ViewModels
+    ├── home/ recipes/ category/ detail/ edit/ cooking/ settings/   Screens + ViewModels
     ├── components/         wiederverwendbare Composables
-    └── theme/              Material-3-Farbschemata (hell/dunkel)
+    └── theme/              Farben (hell/dunkel), Schrift, Formen, Kategorie-Farben
 ```
 
 ### Datenmodell (Room)
@@ -153,7 +164,15 @@ recipes      id PK · uuid (unique) · title · photo_file_name? · base_serving
 ingredients  id PK · recipe_id FK→recipes (CASCADE) · position · amount? · unit (Enum-Name) · name
 steps        id PK · recipe_id FK→recipes (CASCADE) · position · text · timer_seconds?
 notes        id PK · recipe_id FK→recipes (CASCADE) · text · created_at · updated_at
+categories   id PK · uuid (unique) · name · icon (Enum-Name) · color (Enum-Name) · position · created_at   (seit v2)
+recipe_categories  recipe_id FK (CASCADE) · category_id FK (CASCADE) · PK(beide)                     (seit v2)
+recipes.last_cooked_at                                                                               (seit v2)
 ```
+
+- **Datenbank-Version 2.** `Migrations.MIGRATION_1_2` ergänzt nur Tabellen und eine Spalte, legt die
+  vier Standard-Kategorien an und lässt alle Rezepte, Notizen und Fotos unverändert. `MigrationTest`
+  (Robolectric) legt eine echte Version-1-Datenbank an und prüft die Migration gegen das neue Schema.
+  `fallbackToDestructiveMigration` wird bewusst nie verwendet.
 
 - `uuid` identifiziert ein Rezept geräteübergreifend und wird beim Backup-Import zum Zusammenführen genutzt.
 - `amount = null` bedeutet „ohne Mengenangabe“ (z. B. „Pfeffer“).
@@ -176,7 +195,7 @@ Die Umrechnung ist reine Anzeige-Logik (`PortionCalculator`). Die gewählte Port
 `rezepte-backup-JJJJ-MM-TT.zip`:
 
 ```
-backup.json        { "formatVersion": 1, "appVersion": "1.0.0", "exportedAt": "…", "recipes": [ … ] }
+backup.json        { "formatVersion": 2, "appVersion": "…", "exportedAt": "…", "categories": [ … ], "recipes": [ … ] }
 images/<datei>.jpg  Rezeptfotos, referenziert über "photo": "images/<datei>.jpg"
 ```
 
@@ -184,6 +203,9 @@ images/<datei>.jpg  Rezeptfotos, referenziert über "photo": "images/<datei>.jpg
   hebt ältere Backups schrittweise auf das aktuelle Format. Backups aus *neueren* App-Versionen
   werden mit einer klaren Meldung abgelehnt. Neue Felder bekommen immer Default-Werte, unbekannte Felder
   werden ignoriert.
+- **Format 2** ergänzt `categories` (uuid, name, icon, color) sowie pro Rezept `categories` (UUIDs) und
+  `lastCookedAt`. Sicherungen im Format 1 lassen sich weiter laden (`BackupFormatTest`). Kategorien
+  werden beim Import über UUID oder Namen wiedererkannt, damit nichts doppelt entsteht.
 - **Import „Ersetzen“:** Alle Rezepte, Notizen und Fotos werden gelöscht und durch das Backup ersetzt.
 - **Import „Zusammenführen“:** Vorhandenes bleibt erhalten. Rezepte mit gleicher `uuid` werden nur
   überschrieben, wenn die Backup-Fassung neuer ist (`updatedAt`).

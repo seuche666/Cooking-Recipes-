@@ -1,6 +1,15 @@
 package de.rezeptbuch.app.ui.edit
 
 import android.net.Uri
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import de.rezeptbuch.app.ui.category.CategoryEditorDialog
+import de.rezeptbuch.app.ui.components.vector
+import de.rezeptbuch.app.ui.theme.tint
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -45,6 +54,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -94,6 +104,7 @@ fun RecipeEditScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
                 title = { Text(stringResource(if (state.isNew) R.string.recipe_new else R.string.recipe_edit)) },
                 navigationIcon = {
                     IconButton(onClick = requestBack) { Icon(Icons.Filled.Close, stringResource(R.string.cancel)) }
@@ -174,6 +185,9 @@ private fun EditForm(state: RecipeEditUiState, vm: RecipeEditViewModel, modifier
             }
         }
 
+        item { SectionTitle(stringResource(R.string.section_categories)) }
+        item { CategoryPicker(state.selectedCategoryIds, vm) }
+
         item { SectionTitle(stringResource(R.string.section_ingredients)) }
         itemsIndexed(state.ingredients, key = { _, it -> "i${it.key}" }) { _, ingredient ->
             IngredientEditorRow(
@@ -206,6 +220,41 @@ private fun EditForm(state: RecipeEditUiState, vm: RecipeEditViewModel, modifier
                 Text(stringResource(R.string.step_add), Modifier.padding(start = 8.dp))
             }
         }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CategoryPicker(selected: Set<Long>, vm: RecipeEditViewModel) {
+    val categories by vm.categories.collectAsStateWithLifecycle()
+    var creating by rememberSaveable { mutableStateOf(false) }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        categories.forEach { category ->
+            val isSelected = category.id in selected
+            val tint = category.color.tint()
+            FilterChip(
+                selected = isSelected,
+                onClick = { vm.toggleCategory(category.id) },
+                label = { Text(category.name) },
+                leadingIcon = { Icon(category.icon.vector, null, Modifier.size(18.dp), tint = tint.content) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = tint.container,
+                    selectedLabelColor = MaterialTheme.colorScheme.onSurface,
+                ),
+            )
+        }
+        AssistChip(
+            onClick = { creating = true },
+            label = { Text(stringResource(R.string.category_new)) },
+            leadingIcon = { Icon(Icons.Filled.Add, null, Modifier.size(18.dp)) },
+        )
+    }
+    if (creating) {
+        CategoryEditorDialog(
+            initial = null,
+            onDismiss = { creating = false },
+            onSave = { vm.createCategory(it); creating = false },
+        )
     }
 }
 

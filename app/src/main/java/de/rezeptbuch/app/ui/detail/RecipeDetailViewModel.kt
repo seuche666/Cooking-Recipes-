@@ -5,9 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import de.rezeptbuch.app.domain.model.Category
 import de.rezeptbuch.app.domain.model.Recipe
 import de.rezeptbuch.app.domain.portion.PortionCalculator
 import de.rezeptbuch.app.domain.portion.ScaledIngredient
+import de.rezeptbuch.app.domain.repository.CategoryRepository
 import de.rezeptbuch.app.domain.repository.RecipeRepository
 import de.rezeptbuch.app.ui.navigation.Route
 import kotlinx.coroutines.channels.Channel
@@ -26,6 +28,7 @@ sealed interface RecipeDetailUiState {
         val recipe: Recipe,
         val servings: Int,
         val scaledIngredients: List<ScaledIngredient>,
+        val categories: List<Category> = emptyList(),
     ) : RecipeDetailUiState
 }
 
@@ -33,6 +36,7 @@ sealed interface RecipeDetailUiState {
 class RecipeDetailViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val repository: RecipeRepository,
+    categoryRepository: CategoryRepository,
 ) : ViewModel() {
 
     private val recipeId = savedStateHandle.toRoute<Route.RecipeDetail>().recipeId
@@ -45,7 +49,11 @@ class RecipeDetailViewModel @Inject constructor(
     val deleted = _events.receiveAsFlow()
 
     val uiState: StateFlow<RecipeDetailUiState> =
-        combine(repository.observeRecipe(recipeId), selectedServings) { recipe, selected ->
+        combine(
+            repository.observeRecipe(recipeId),
+            selectedServings,
+            categoryRepository.observeCategories(),
+        ) { recipe, selected, categories ->
             if (recipe == null) {
                 RecipeDetailUiState.NotFound
             } else {
@@ -54,6 +62,7 @@ class RecipeDetailViewModel @Inject constructor(
                     recipe = recipe,
                     servings = servings,
                     scaledIngredients = PortionCalculator.scale(recipe.ingredients, recipe.baseServings, servings),
+                    categories = categories.map { it.category }.filter { it.id in recipe.categoryIds },
                 )
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), RecipeDetailUiState.Loading)

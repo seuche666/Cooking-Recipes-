@@ -17,7 +17,12 @@ import java.time.Instant
 /** Drei Beispielrezepte, die beim allerersten Start angelegt werden. */
 object SeedData {
 
-    data class SeedRecipe(val recipe: Recipe, val notes: List<String>)
+    data class SeedRecipe(
+        val recipe: Recipe,
+        val notes: List<String>,
+        /** UUIDs aus [DefaultCategories]. */
+        val categoryUuids: List<String> = emptyList(),
+    )
 
     fun recipes(): List<SeedRecipe> {
         val now = Instant.now()
@@ -69,6 +74,7 @@ object SeedData {
                     ),
                 ),
                 notes = listOf("Nicht zu heiß werden lassen, sonst stockt das Ei."),
+                categoryUuids = listOf(DefaultCategories.MAIN.uuid),
             ),
             SeedRecipe(
                 recipe(
@@ -93,6 +99,7 @@ object SeedData {
                     ),
                 ),
                 notes = listOf("Mit Mineralwasser statt halber Milch werden sie luftiger."),
+                categoryUuids = listOf(DefaultCategories.BREAKFAST.uuid, DefaultCategories.DESSERT.uuid),
             ),
             SeedRecipe(
                 recipe(
@@ -119,6 +126,7 @@ object SeedData {
                     ),
                 ),
                 notes = emptyList(),
+                categoryUuids = listOf(DefaultCategories.MAIN.uuid),
             ),
         )
     }

@@ -7,18 +7,23 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import de.rezeptbuch.app.data.photo.PhotoStorage
+import de.rezeptbuch.app.domain.model.Category
 import de.rezeptbuch.app.domain.model.CookingStep
 import de.rezeptbuch.app.domain.model.Ingredient
 import de.rezeptbuch.app.domain.model.IngredientUnit
 import de.rezeptbuch.app.domain.model.Recipe
 import de.rezeptbuch.app.domain.portion.PortionCalculator
 import de.rezeptbuch.app.domain.portion.TimerInput
+import de.rezeptbuch.app.domain.repository.CategoryRepository
 import de.rezeptbuch.app.domain.repository.RecipeRepository
 import de.rezeptbuch.app.ui.navigation.Route
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -56,6 +61,7 @@ data class RecipeEditUiState(
     val isSaving: Boolean = false,
     val isDirty: Boolean = false,
     val photoError: Boolean = false,
+    val selectedCategoryIds: Set<Long> = emptySet(),
 )
 
 sealed interface EditEvent {
@@ -67,9 +73,16 @@ class RecipeEditViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: RecipeRepository,
     private val photoStorage: PhotoStorage,
+    private val categoryRepository: CategoryRepository,
 ) : ViewModel() {
 
-    private val recipeId = savedStateHandle.toRoute<Route.RecipeEdit>().recipeId
+    private val route = savedStateHandle.toRoute<Route.RecipeEdit>()
+    private val recipeId = route.recipeId
+
+    /** Alle Kategorien zur Auswahl (Chips). */
+    val categories: StateFlow<List<Category>> = categoryRepository.observeCategories()
+        .map { list -> list.map { it.category } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     private val keys = AtomicLong(1)
     private var original: Recipe? = null
     private var saved = false
@@ -89,6 +102,7 @@ class RecipeEditViewModel @Inject constructor(
                     isLoading = false,
                     ingredients = listOf(IngredientDraft(keys.getAndIncrement())),
                     steps = listOf(StepDraft(keys.getAndIncrement())),
+                    selectedCategoryIds = setOfNotNull(route.categoryId.takeIf { it != 0L }),
                 )
             } else {
                 RecipeEditUiState(
@@ -104,6 +118,7 @@ class RecipeEditViewModel @Inject constructor(
                     steps = recipe.steps.map {
                         StepDraft(keys.getAndIncrement(), it.text, TimerInput.format(it.timerSeconds))
                     },
+                    selectedCategoryIds = recipe.categoryIds,
                 )
             }
         }
@@ -115,6 +130,19 @@ class RecipeEditViewModel @Inject constructor(
     fun onTitleChange(v: String) = edit { it.copy(title = v, showTitleError = false) }
     fun onServingsChange(v: String) = edit { it.copy(baseServings = v.filter(Char::isDigit).take(2), showServingsError = false) }
     fun onCookTimeChange(v: String) = edit { it.copy(cookTimeMinutes = v.filter(Char::isDigit).take(4)) }
+
+    // --- Kategorien
+    fun toggleCategory(id: Long) = edit { s ->
+        s.copy(selectedCategoryIds = if (id in s.selectedCategoryIds) s.selectedCategoryIds - id else s.selectedCategoryIds + id)
+    }
+
+    /** Neue Kategorie direkt aus dem Editor anlegen und auswählen. */
+    fun createCategory(category: Category) {
+        viewModelScope.launch {
+            val id = categoryRepository.saveCategory(category)
+            edit { it.copy(selectedCategoryIds = it.selectedCategoryIds + id) }
+        }
+    }
 
     // --- Zutaten
     fun addIngredient() = edit { it.copy(ingredients = it.ingredients + IngredientDraft(keys.getAndIncrement())) }
@@ -187,6 +215,8 @@ class RecipeEditViewModel @Inject constructor(
                     .map { CookingStep(it.text.trim(), TimerInput.parse(it.timer)) },
                 notes = emptyList(),
                 createdAt = original?.createdAt ?: now,
+                categoryIds = s.selectedCategoryIds,
+                lastCookedAt = original?.lastCookedAt,
                 updatedAt = now,
             )
             val id = repository.saveRecipe(recipe)

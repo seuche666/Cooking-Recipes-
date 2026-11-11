@@ -82,6 +82,10 @@ android {
         compose = true
         buildConfig = true
     }
+    testOptions {
+        // Für Robolectric-Tests (Datenbank-Migration)
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 secrets {
@@ -128,4 +132,6 @@ dependencies {
     implementation(libs.androidx.exifinterface)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

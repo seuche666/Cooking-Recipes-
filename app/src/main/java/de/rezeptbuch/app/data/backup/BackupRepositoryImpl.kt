@@ -6,18 +6,23 @@ import android.provider.OpenableColumns
 import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
 import de.rezeptbuch.app.BuildConfig
+import de.rezeptbuch.app.data.backup.model.BackupCategory
 import de.rezeptbuch.app.data.backup.model.BackupFile
 import de.rezeptbuch.app.data.backup.model.BackupIngredient
 import de.rezeptbuch.app.data.backup.model.BackupNote
 import de.rezeptbuch.app.data.backup.model.BackupRecipe
 import de.rezeptbuch.app.data.backup.model.BackupStep
 import de.rezeptbuch.app.data.local.AppDatabase
+import de.rezeptbuch.app.data.local.entity.CategoryEntity
 import de.rezeptbuch.app.data.local.entity.IngredientEntity
+import de.rezeptbuch.app.data.local.entity.RecipeCategoryCrossRef
 import de.rezeptbuch.app.data.local.entity.NoteEntity
 import de.rezeptbuch.app.data.local.entity.RecipeEntity
 import de.rezeptbuch.app.data.local.entity.StepEntity
 import de.rezeptbuch.app.data.photo.PhotoStorage
 import de.rezeptbuch.app.domain.model.ExportResult
+import de.rezeptbuch.app.domain.model.CategoryColor
+import de.rezeptbuch.app.domain.model.CategoryIcon
 import de.rezeptbuch.app.domain.model.ImportMode
 import de.rezeptbuch.app.domain.model.ImportResult
 import de.rezeptbuch.app.domain.model.IngredientUnit
@@ -49,6 +54,7 @@ class BackupRepositoryImpl @Inject constructor(
 ) : BackupRepository {
 
     private val dao = db.recipeDao()
+    private val categoryDao = db.categoryDao()
 
     private val json = Json {
         prettyPrint = true
@@ -60,6 +66,8 @@ class BackupRepositoryImpl @Inject constructor(
 
     override suspend fun export(target: Uri, onProgress: (Float) -> Unit): ExportResult = withContext(Dispatchers.IO) {
         val recipes = dao.getAllRecipesWithDetails()
+        val categories = categoryDao.getAll()
+        val categoryUuids = categories.associate { it.id to it.uuid }
         val photos = recipes.mapNotNull { r -> r.recipe.photoFileName?.takeIf { photoStorage.fileFor(it).exists() } }
         val totalSteps = (photos.size + 1).toFloat()
 
@@ -67,6 +75,7 @@ class BackupRepositoryImpl @Inject constructor(
             formatVersion = BackupFormat.CURRENT_VERSION,
             appVersion = BuildConfig.VERSION_NAME,
             exportedAt = Instant.now().toString(),
+            categories = categories.map { BackupCategory(it.uuid, it.name, it.icon, it.color, it.position) },
             recipes = recipes.map { r ->
                 val photo = r.recipe.photoFileName?.takeIf { it in photos }
                 BackupRecipe(
@@ -81,6 +90,8 @@ class BackupRepositoryImpl @Inject constructor(
                         .map { BackupIngredient(it.amount, it.unit.name, it.name) },
                     steps = r.steps.sortedBy { it.position }.map { BackupStep(it.text, it.timerSeconds) },
                     notes = r.notes.map { BackupNote(it.text, it.createdAt, it.updatedAt) },
+                    categories = r.categoryRefs.mapNotNull { categoryUuids[it.categoryId] },
+                    lastCookedAt = r.recipe.lastCookedAt,
                 )
             },
         )
@@ -134,19 +145,20 @@ class BackupRepositoryImpl @Inject constructor(
                 try {
                     db.withTransaction {
                         if (mode == ImportMode.REPLACE) dao.deleteAll()
+                        val categoryIds = importCategories(backup, mode)
                         backup.recipes.forEachIndexed { index, r ->
                             val photoName = r.photo?.let { newPhotoNames[it] }
                             // Bei REPLACE greift das nur für doppelte UUIDs innerhalb des Backups
                             val existing = dao.findByUuid(r.uuid)
                             when {
                                 existing == null -> {
-                                    insertRecipe(r, photoName)
+                                    insertRecipe(r, photoName, categoryIds, r.lastCookedAt)
                                     imported++
                                 }
                                 r.updatedAt > existing.updatedAt -> {
                                     dao.deleteRecipe(existing.id)
                                     existing.photoFileName?.let(replacedPhotos::add)
-                                    insertRecipe(r, photoName)
+                                    insertRecipe(r, photoName, categoryIds, maxOfNullable(existing.lastCookedAt, r.lastCookedAt))
                                     updated++
                                 }
                                 else -> {
@@ -178,7 +190,40 @@ class BackupRepositoryImpl @Inject constructor(
             }
         }
 
-    private suspend fun insertRecipe(r: BackupRecipe, photoName: String?) {
+    /**
+     * Übernimmt die Kategorien aus dem Backup und liefert UUID → lokale ID.
+     * Vorhandene Kategorien werden über UUID oder (Standard-Kategorien anderer Geräte) über den Namen
+     * wiedererkannt, damit nichts doppelt entsteht. Bei „Ersetzen“ werden die eigenen Kategorien nur
+     * ersetzt, wenn das Backup welche enthält (Format-1-Backups haben keine).
+     */
+    private suspend fun importCategories(backup: BackupFile, mode: ImportMode): Map<String, Long> {
+        if (mode == ImportMode.REPLACE && backup.categories.isNotEmpty()) categoryDao.deleteAll()
+        val now = System.currentTimeMillis()
+        return backup.categories.filter { it.uuid.isNotBlank() && it.name.isNotBlank() }.associate { c ->
+            val existing = categoryDao.findByUuid(c.uuid) ?: categoryDao.findByName(c.name.trim())
+            c.uuid to (
+                existing?.id ?: categoryDao.insert(
+                    CategoryEntity(
+                        uuid = c.uuid,
+                        name = c.name.trim(),
+                        icon = CategoryIcon.fromName(c.icon).name,
+                        color = CategoryColor.fromName(c.color).name,
+                        position = categoryDao.nextPosition(),
+                        createdAt = now,
+                    ),
+                )
+                )
+        }
+    }
+
+    private fun maxOfNullable(a: Long?, b: Long?): Long? = listOfNotNull(a, b).maxOrNull()
+
+    private suspend fun insertRecipe(
+        r: BackupRecipe,
+        photoName: String?,
+        categoryIds: Map<String, Long>,
+        lastCookedAt: Long?,
+    ) {
         val now = System.currentTimeMillis()
         val id = dao.insertRecipe(
             RecipeEntity(
@@ -189,8 +234,10 @@ class BackupRepositoryImpl @Inject constructor(
                 cookTimeMinutes = r.cookTimeMinutes,
                 createdAt = r.createdAt.takeIf { it > 0 } ?: now,
                 updatedAt = r.updatedAt.takeIf { it > 0 } ?: now,
+                lastCookedAt = lastCookedAt,
             ),
         )
+        dao.insertCategoryRefs(r.categories.mapNotNull { categoryIds[it] }.distinct().map { RecipeCategoryCrossRef(id, it) })
         dao.insertIngredients(
             r.ingredients.mapIndexed { i, ing ->
                 IngredientEntity(recipeId = id, position = i, amount = ing.amount, unit = IngredientUnit.fromName(ing.unit), name = ing.name)

@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class CookingUiState(
@@ -29,11 +30,16 @@ data class CookingUiState(
 @HiltViewModel
 class CookingModeViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    repository: RecipeRepository,
+    private val repository: RecipeRepository,
     private val timerManager: CookingTimerManager,
 ) : ViewModel() {
 
     private val route = savedStateHandle.toRoute<Route.CookingMode>()
+
+    init {
+        // Für „Zuletzt gekocht“ auf der Startseite
+        viewModelScope.launch { repository.markCooked(route.recipeId) }
+    }
 
     val state: StateFlow<CookingUiState> =
         combine(repository.observeRecipe(route.recipeId), timerManager.timers) { recipe, timers ->
