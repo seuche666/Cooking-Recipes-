@@ -17,15 +17,23 @@ data class Recipe(
     val notes: List<RecipeNote>,
     val createdAt: Instant,
     val updatedAt: Instant,
+    /** IDs der zugeordneten Kategorien (beliebig viele). */
+    val categoryIds: Set<Long> = emptySet(),
+    /** Wann der Kochmodus zuletzt für dieses Rezept gestartet wurde. */
+    val lastCookedAt: Instant? = null,
 )
 
-/** Schlanke Variante für die Übersichtsliste. */
+/** Schlanke Variante für Listen und Karten. */
 data class RecipeSummary(
     val id: Long,
     val title: String,
     val photoFileName: String?,
     val baseServings: Int,
     val cookTimeMinutes: Int?,
+    val createdAt: Instant = Instant.EPOCH,
+    val lastCookedAt: Instant? = null,
+    /** Zutaten, die zum Suchbegriff passen (für den Hinweis „enthält …“). */
+    val matchedIngredients: List<String> = emptyList(),
 )
 
 data class Ingredient(

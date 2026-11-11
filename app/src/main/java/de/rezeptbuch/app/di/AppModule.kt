@@ -14,9 +14,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import de.rezeptbuch.app.data.backup.BackupRepositoryImpl
 import de.rezeptbuch.app.data.local.AppDatabase
+import de.rezeptbuch.app.data.local.Migrations
+import de.rezeptbuch.app.data.repository.CategoryRepositoryImpl
 import de.rezeptbuch.app.data.repository.RecipeRepositoryImpl
 import de.rezeptbuch.app.data.settings.SettingsRepositoryImpl
 import de.rezeptbuch.app.domain.repository.BackupRepository
+import de.rezeptbuch.app.domain.repository.CategoryRepository
 import de.rezeptbuch.app.domain.repository.RecipeRepository
 import de.rezeptbuch.app.domain.repository.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +39,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
-        Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME).build()
+        Room.databaseBuilder(context, AppDatabase::class.java, AppDatabase.NAME)
+            // Nie fallbackToDestructiveMigration: Rezepte dürfen beim Update nicht verloren gehen.
+            .addMigrations(*Migrations.ALL)
+            .build()
 
     @Provides
     @Singleton
@@ -54,6 +60,9 @@ object AppModule {
 abstract class RepositoryModule {
     @Binds
     abstract fun bindRecipeRepository(impl: RecipeRepositoryImpl): RecipeRepository
+
+    @Binds
+    abstract fun bindCategoryRepository(impl: CategoryRepositoryImpl): CategoryRepository
 
     @Binds
     abstract fun bindSettingsRepository(impl: SettingsRepositoryImpl): SettingsRepository

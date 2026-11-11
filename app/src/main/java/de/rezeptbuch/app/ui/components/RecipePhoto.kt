@@ -4,9 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.RestaurantMenu
+import androidx.compose.material.icons.outlined.RiceBowl
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -15,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import de.rezeptbuch.app.ui.theme.placeholderTint
 import java.io.File
 
 /** Zeigt ein Rezeptfoto aus dem internen Speicher oder einen Platzhalter. */
@@ -24,6 +24,8 @@ fun RecipePhoto(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     placeholderIconSize: Dp = 40.dp,
+    /** Bestimmt die Platzhalterfarbe (z. B. der Rezepttitel), damit nicht alles gleich aussieht. */
+    placeholderSeed: String = contentDescription.orEmpty(),
 ) {
     val context = LocalContext.current
     if (photoFileName != null) {
@@ -34,11 +36,12 @@ fun RecipePhoto(
             modifier = modifier,
         )
     } else {
-        Box(modifier.background(MaterialTheme.colorScheme.secondaryContainer), contentAlignment = Alignment.Center) {
+        val tint = placeholderTint(placeholderSeed)
+        Box(modifier.background(tint.container), contentAlignment = Alignment.Center) {
             Icon(
-                Icons.Outlined.RestaurantMenu,
+                Icons.Outlined.RiceBowl,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                tint = tint.content,
                 modifier = Modifier.size(placeholderIconSize),
             )
         }

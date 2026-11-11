@@ -28,7 +28,9 @@ object BackupMigrations {
         if (version < 1) throw BackupException("Unbekanntes Backup-Format ($version).")
         while (version < BackupFormat.CURRENT_VERSION) {
             current = when (version) {
-                // 1 -> migrate1To2(current)
+                // 1 → 2: nur neue, optionale Felder (Kategorien, lastCookedAt) mit Default-Werten –
+                // das JSON bleibt unverändert gültig.
+                1 -> current
                 else -> current
             }
             version++
@@ -38,7 +40,7 @@ object BackupMigrations {
 }
 
 object BackupFormat {
-    const val CURRENT_VERSION = 1
+    const val CURRENT_VERSION = 2
     const val JSON_ENTRY = "backup.json"
     const val IMAGE_DIR = "images/"
     const val MIME_TYPE = "application/zip"

@@ -11,8 +11,46 @@
     <string name="discard">Verwerfen</string>
     <string name="keep_editing">Weiter bearbeiten</string>
 
+    <!-- Navigation -->
+    <string name="nav_home">Start</string>
+    <string name="nav_recipes">Rezepte</string>
+    <string name="nav_settings">Optionen</string>
+
+    <!-- Startseite -->
+    <string name="home_greeting">Was kochen wir heute?</string>
+    <string name="home_cook_hint">Tipp: Rezepte, die du im Kochmodus öffnest, erscheinen hier unter „Zuletzt gekocht“.</string>
+    <string name="section_categories">Kategorien</string>
+    <string name="section_recently_cooked">Zuletzt gekocht</string>
+    <string name="section_recently_added">Neu hinzugefügt</string>
+    <string name="show_all">Alle</string>
+
+    <!-- Rezeptseite -->
+    <string name="tab_all_recipes">Alle Rezepte</string>
+    <string name="tab_categories">Kategorien</string>
+    <string name="recipe_deleted">„%1$s“ gelöscht</string>
+    <string name="undo">Rückgängig</string>
+    <string name="swipe_to_delete_hint">Zum Löschen ein Rezept nach links wischen.</string>
+    <string name="categories_hint">Tippen öffnet die Rezepte, lange drücken zum Bearbeiten oder Löschen.</string>
+
+    <!-- Kategorien -->
+    <string name="category_new">Neue Kategorie</string>
+    <string name="category_edit">Kategorie bearbeiten</string>
+    <string name="category_delete">Kategorie löschen</string>
+    <string name="category_name">Name</string>
+    <string name="category_icon">Symbol</string>
+    <string name="category_color">Farbe</string>
+    <string name="category_delete_title">Kategorie löschen?</string>
+    <string name="category_delete_message">„%1$s“ wird gelöscht. Die Rezepte darin bleiben erhalten.</string>
+    <string name="category_not_found">Kategorie nicht gefunden.</string>
+    <string name="category_empty">Noch keine Rezepte in dieser Kategorie.</string>
+    <plurals name="recipe_count">
+        <item quantity="one">%d Rezept</item>
+        <item quantity="other">%d Rezepte</item>
+    </plurals>
+
     <!-- Liste -->
-    <string name="search_hint">Rezepte suchen</string>
+    <string name="search_hint">Rezept oder Zutat suchen</string>
+    <string name="search_contains">enthält: %1$s</string>
     <string name="search_clear">Suche löschen</string>
     <string name="recipe_add">Neues Rezept</string>
     <string name="list_empty">Noch keine Rezepte vorhanden.\nTippe auf „Neues Rezept“, um loszulegen.</string>
@@ -103,8 +141,8 @@
 
     <!-- Einstellungen -->
     <string name="settings_title">Einstellungen</string>
-    <string name="settings_appearance">Darstellung</string>
-    <string name="theme_system">Systemeinstellung</string>
+    <string name="settings_design">Design</string>
+    <string name="theme_system">Wie System (Standard)</string>
     <string name="theme_light">Hell</string>
     <string name="theme_dark">Dunkel</string>
     <string name="settings_backup">Datensicherung</string>

@@ -16,6 +16,18 @@ data class BackupFile(
     val appVersion: String = "",
     val exportedAt: String = "",
     val recipes: List<BackupRecipe> = emptyList(),
+    /** Seit Format 2. In Format-1-Backups leer. */
+    val categories: List<BackupCategory> = emptyList(),
+)
+
+/** Seit Format 2. [icon]/[color] sind Enum-Namen; Unbekanntes fällt auf einen Standard zurück. */
+@Serializable
+data class BackupCategory(
+    val uuid: String,
+    val name: String,
+    val icon: String = "RESTAURANT",
+    val color: String = "BLUE",
+    val position: Int = 0,
 )
 
 @Serializable
@@ -31,6 +43,10 @@ data class BackupRecipe(
     val ingredients: List<BackupIngredient> = emptyList(),
     val steps: List<BackupStep> = emptyList(),
     val notes: List<BackupNote> = emptyList(),
+    /** Seit Format 2: UUIDs aus [BackupFile.categories]. */
+    val categories: List<String> = emptyList(),
+    /** Seit Format 2. */
+    val lastCookedAt: Long? = null,
 )
 
 @Serializable
